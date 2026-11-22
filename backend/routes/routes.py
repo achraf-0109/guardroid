@@ -3,7 +3,6 @@ from tempfile import TemporaryDirectory
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from config import ALLOWED_EXTENSIONS, MAX_UPLOAD_SIZE
 from services.predictor import predict_apk
-from services.processor import process_features
 
 router = APIRouter()
 

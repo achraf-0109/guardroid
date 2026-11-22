@@ -38,10 +38,7 @@ const AnalysisPage: FC = () => {
 
   // Timer tracking seconds and minutes while analyzing
   useEffect(() => {
-    if (state !== 'analyzing') {
-      setElapsedTime(0)
-      return
-    }
+    if (state !== 'analyzing') return
 
     const startTime = Date.now()
     setElapsedTime(0)
@@ -97,9 +94,13 @@ const AnalysisPage: FC = () => {
     if (!selectedFile) return;
 
     try {
+      setElapsedTime(0);
       setState('analyzing');
       setError("");
+      const startTime = Date.now();
       const prediction = await predict(selectedFile);
+      const totalSeconds = Math.max(1, Math.round((Date.now() - startTime) / 1000));
+      setElapsedTime(totalSeconds);
       setResult(prediction);
       setState('ready_for_backend');
     } catch (err) {
@@ -207,6 +208,7 @@ const AnalysisPage: FC = () => {
     setSelectedFile(null)
     setError('')
     setResult(null)
+    setElapsedTime(0)
     setState('idle')
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
@@ -511,6 +513,24 @@ const AnalysisPage: FC = () => {
                   ? 'Guardroid flagged this APK as potentially malicious based on its static features.'
                   : 'Guardroid classified this APK as benign based on its static features.'}
               </p>
+              <div className={styles.resultTimerBadge} aria-label={`Engine running time: ${formatElapsedTime(elapsedTime)}`}>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className={styles.timerIcon}
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                <span>Engine running time: {formatElapsedTime(elapsedTime)}</span>
+              </div>
               <button
                 type="button"
                 className={styles.scanAgainButton}

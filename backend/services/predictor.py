@@ -6,8 +6,6 @@ from services.extractor import extract_features
 def predict_apk(apk_path: Path, model, feature_names=None):
     raw_features = extract_features(apk_path)
     X = process_features(raw_features, feature_names)
-    print("That's vect shape:", X.shape)
-    print("That's vect:", X)
 
     if model.n_features_in_ != X.shape[1]:
         raise ValueError("Feature count differs from training.")
@@ -16,10 +14,12 @@ def predict_apk(apk_path: Path, model, feature_names=None):
         if list(model.feature_names_in_) != X.columns.tolist():
             raise ValueError("Feature order differs from training.")
 
+    print("predictions:", model.predict(X))
+
     prediction = model.predict(X)[0]
     probabilities = model.predict_proba(X)[0]
 
-    print("Prediction:", prediction)
+    print("Prediction:", prediction, "Probability:", max(probabilities))
    
     return {
         "predicted_label": (

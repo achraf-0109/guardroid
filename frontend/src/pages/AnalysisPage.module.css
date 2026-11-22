@@ -85,8 +85,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 420px;
-  padding: clamp(2rem, 4vw, 3rem);
+  min-height: 380px;
+  padding: clamp(1.25rem, 2.5vw, 1.85rem) clamp(1.5rem, 4vw, 2.75rem);
   border-radius: 20px;
   background: rgba(18, 24, 38, 0.45);
   backdrop-filter: blur(8px);
@@ -424,7 +424,7 @@
   text-align: center;
   width: 100%;
   max-width: 580px;
-  padding: 1rem 0;
+  padding: 0.25rem 0;
 }
 
 .mascotStageArea {
@@ -434,7 +434,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.85rem;
 }
 
 .activityRing {
@@ -559,7 +559,7 @@
   font-weight: 800;
   letter-spacing: -0.02em;
   color: #34d399;
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.35rem;
   line-height: 1.15;
 }
 
@@ -568,7 +568,7 @@
   font-weight: 800;
   letter-spacing: -0.02em;
   color: #f87171;
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.35rem;
   line-height: 1.15;
 }
 
@@ -576,7 +576,7 @@
   font-size: 0.95rem;
   font-weight: 600;
   color: #94a3b8;
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.5rem;
   word-break: break-all;
 }
 
@@ -585,7 +585,23 @@
   line-height: 1.6;
   color: #cbd5e1;
   max-width: 52ch;
-  margin: 0 auto 2rem;
+  margin: 0 auto 1.15rem;
+}
+
+.resultTimerBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'JetBrains Mono', Consolas, Monaco, monospace;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  padding: 0.35rem 0.95rem;
+  margin-bottom: 1.5rem;
+  letter-spacing: 0.01em;
 }
 
 .scanAgainButton {
