@@ -128,11 +128,11 @@ The paths below reflect the structure used during development. Run the frontend 
 
 ## Run locally
 
-Unzip the model file at the directory .\backend\artifacts\guardroid_model.zip
 
-From `backend/`, activate your Python environment, install dependencies, and start the API. Put the model artifact in `artifacts/` and use the same scikit-learn version as the training environment.
+From `backend/`, activate your Python environment, install dependencies, and start the API.
 
 ```bash
+.venv\Scripts\activate
 cd .\backend\
 python -m pip install -r requirements.txt
 python -m uvicorn app:my_app --reload
