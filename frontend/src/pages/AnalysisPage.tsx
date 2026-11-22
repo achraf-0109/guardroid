@@ -19,24 +19,53 @@ function formatBytes(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
 }
 
+function formatElapsedTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+}
+
 const AnalysisPage: FC = () => {
   const [state, setState] = useState<AnalysisState>('idle')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [error, setError] = useState<string>('')
   const [result, setResult] = useState<Prediction | null>(null)
-  const [analyzingStage, setAnalyzingStage] = useState<string>('')
   const [activeIndicator, setActiveIndicator] = useState<'good' | 'bad'>('good')
+  const [elapsedTime, setElapsedTime] = useState<number>(0)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dropzoneRef = useRef<HTMLDivElement>(null)
 
-  // Alternate green and red indicators during analysis
+  // Timer tracking seconds and minutes while analyzing
+  useEffect(() => {
+    if (state !== 'analyzing') {
+      setElapsedTime(0)
+      return
+    }
+
+    const startTime = Date.now()
+    setElapsedTime(0)
+
+    const timer = setInterval(() => {
+      setElapsedTime(Math.floor((Date.now() - startTime) / 1000))
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [state])
+
+  // Alternate green and red indicators during analysis (respects reduced-motion preferences)
   useEffect(() => {
     if (state !== 'analyzing') return
 
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    if (prefersReducedMotion) return
+
     const interval = setInterval(() => {
       setActiveIndicator((prev) => (prev === 'good' ? 'bad' : 'good'))
-    }, 500)
+    }, 850)
 
     return () => clearInterval(interval)
   }, [state])
@@ -69,7 +98,6 @@ const AnalysisPage: FC = () => {
 
     try {
       setState('analyzing');
-      setAnalyzingStage('Uploading APK & running ML inference...');
       setError("");
       const prediction = await predict(selectedFile);
       setResult(prediction);
@@ -79,6 +107,13 @@ const AnalysisPage: FC = () => {
       setState('invalid');
     }
   }
+
+  const isMalicious = Boolean(
+    result &&
+      (result.predicted_label === 1 ||
+        result.predicted_label === '1' ||
+        String(result.predicted_label).toLowerCase().trim() === 'malicious')
+  )
 
   // Validate if file is an Android APK
   const validateAndSetFile = (file: File) => {
@@ -204,203 +239,288 @@ const AnalysisPage: FC = () => {
           aria-hidden="true"
         />
 
-        {/* Drag and Drop Upload Area */}
-        {state !== 'ready_for_backend' ? (
-          <section
-            ref={dropzoneRef}
-            className={`${styles.dropzone} ${state === 'dragging'
-                ? styles.dropzoneDragging
-                : state === 'selected'
-                  ? styles.dropzoneSelected
-                  : state === 'invalid'
-                    ? styles.dropzoneInvalid
-                    : state === 'analyzing'
-                      ? styles.dropzoneAnalyzing
+        {/* Upload & Analysis Panel */}
+        <section
+          ref={dropzoneRef}
+          className={`${styles.dropzone} ${
+            state === 'dragging'
+              ? styles.dropzoneDragging
+              : state === 'selected'
+                ? styles.dropzoneSelected
+                : state === 'invalid'
+                  ? styles.dropzoneInvalid
+                  : state === 'analyzing'
+                    ? activeIndicator === 'good'
+                      ? styles.dropzoneAnalyzingGood
+                      : styles.dropzoneAnalyzingBad
+                    : state === 'ready_for_backend'
+                      ? isMalicious
+                        ? styles.dropzoneResultMalicious
+                        : styles.dropzoneResultBenign
                       : styles.dropzoneIdle
-              }`}
-            onDragEnter={handleDragEnter}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={state === 'idle' || state === 'invalid' ? handleOpenFileDialog : undefined}
-            onKeyDown={state === 'idle' || state === 'invalid' ? handleKeyDown : undefined}
-            tabIndex={state === 'idle' || state === 'invalid' ? 0 : -1}
-            role="region"
-            aria-label="Android APK upload dropzone"
-          >
-            {/* Visual State: IDLE or DRAGGING */}
-            {(state === 'idle' || state === 'dragging') && (
-              <div className={styles.idleContent}>
-                <div className={styles.uploadIconWrap}>
+          }`}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={state === 'idle' || state === 'invalid' ? handleOpenFileDialog : undefined}
+          onKeyDown={state === 'idle' || state === 'invalid' ? handleKeyDown : undefined}
+          tabIndex={state === 'idle' || state === 'invalid' ? 0 : -1}
+          role="region"
+          aria-label="Android APK upload dropzone"
+        >
+          {/* Visual State: IDLE or DRAGGING */}
+          {(state === 'idle' || state === 'dragging') && (
+            <div className={styles.idleContent}>
+              <div className={styles.uploadIconWrap}>
+                <svg
+                  className={styles.uploadIcon}
+                  width="44"
+                  height="44"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M20 16.5v2a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 014 18.5v-2"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
+
+              <div className={styles.promptTextGroup}>
+                <p className={styles.primaryPrompt}>
+                  {state === 'dragging' ? 'Release to upload APK' : 'Drag and drop your APK here'}
+                </p>
+                <p className={styles.secondaryPrompt}>
+                  <span>or</span>{' '}
+                  <button
+                    type="button"
+                    className={styles.browseButton}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleOpenFileDialog()
+                    }}
+                  >
+                    browse files
+                  </button>
+                </p>
+              </div>
+
+              <p className={styles.formatHint}>Supports .apk packages up to 250 MB</p>
+            </div>
+          )}
+
+          {/* Visual State: INVALID / ERROR */}
+          {state === 'invalid' && (
+            <div className={styles.invalidContent} role="alert" aria-live="assertive">
+              <div className={styles.errorIconWrap}>
+                <svg
+                  width="40"
+                  height="40"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="10" stroke="#f87171" strokeWidth="2" />
+                  <path
+                    d="M12 8v5m0 3h.01"
+                    stroke="#f87171"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
+              <p className={styles.errorHeading}>{selectedFile ? 'Analysis failed' : 'Unsupported file format'}</p>
+              <p className={styles.errorMessage}>{error}</p>
+              <button
+                type="button"
+                className={styles.retryButton}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleOpenFileDialog()
+                }}
+              >
+                Choose another .apk file
+              </button>
+            </div>
+          )}
+
+          {/* Visual State: SELECTED */}
+          {state === 'selected' && selectedFile && (
+            <div className={styles.selectedContent}>
+              <div className={styles.fileCard}>
+                <div className={styles.apkBadge}>
                   <svg
-                    className={styles.uploadIcon}
-                    width="44"
-                    height="44"
+                    width="32"
+                    height="32"
                     viewBox="0 0 24 24"
                     fill="none"
                     aria-hidden="true"
                   >
                     <path
-                      d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
+                      d="M6 9a6 6 0 0112 0v1h1a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7a2 2 0 012-2h1V9z"
+                      stroke="#34d399"
+                      strokeWidth="1.8"
                       strokeLinejoin="round"
                     />
+                    <circle cx="9" cy="8" r="1" fill="#34d399" />
+                    <circle cx="15" cy="8" r="1" fill="#34d399" />
+                  </svg>
+                  <span className={styles.apkBadgeText}>APK</span>
+                </div>
+
+                <div className={styles.fileDetails}>
+                  <p className={styles.fileName} title={selectedFile.name}>
+                    {selectedFile.name}
+                  </p>
+                  <p className={styles.fileSize}>{formatBytes(selectedFile.size)}</p>
+                </div>
+
+                <button
+                  type="button"
+                  className={styles.removeButton}
+                  onClick={handleRemoveFile}
+                  aria-label={`Remove file ${selectedFile.name}`}
+                  title="Remove file"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    aria-hidden="true"
+                  >
                     <path
-                      d="M20 16.5v2a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 014 18.5v-2"
+                      d="M18 6L6 18M6 6l12 12"
                       stroke="currentColor"
                       strokeWidth="2"
                       strokeLinecap="round"
                     />
                   </svg>
-                </div>
-
-                <div className={styles.promptTextGroup}>
-                  <p className={styles.primaryPrompt}>
-                    {state === 'dragging' ? 'Release to upload APK' : 'Drag and drop your APK here'}
-                  </p>
-                  <p className={styles.secondaryPrompt}>
-                    <span>or</span>{' '}
-                    <button
-                      type="button"
-                      className={styles.browseButton}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleOpenFileDialog()
-                      }}
-                    >
-                      browse files
-                    </button>
-                  </p>
-                </div>
-
-                <p className={styles.formatHint}>Supports .apk packages up to 250 MB</p>
-              </div>
-            )}
-
-            {/* Visual State: INVALID / ERROR */}
-            {state === 'invalid' && (
-              <div className={styles.invalidContent} role="alert" aria-live="assertive">
-                <div className={styles.errorIconWrap}>
-                  <svg
-                    width="40"
-                    height="40"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    aria-hidden="true"
-                  >
-                    <circle cx="12" cy="12" r="10" stroke="#f87171" strokeWidth="2" />
-                    <path
-                      d="M12 8v5m0 3h.01"
-                      stroke="#f87171"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </div>
-                <p className={styles.errorHeading}>Unsupported file format</p>
-                <p className={styles.errorMessage}>{error}</p>
-                <button
-                  type="button"
-                  className={styles.retryButton}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleOpenFileDialog()
-                  }}
-                >
-                  Choose a valid .apk file
+                  <span>Remove</span>
                 </button>
               </div>
-            )}
 
-            {/* Visual State: SELECTED */}
-            {state === 'selected' && selectedFile && (
-              <div className={styles.selectedContent}>
-                <div className={styles.fileCard}>
-                  <div className={styles.apkBadge}>
-                    <svg
-                      width="32"
-                      height="32"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M6 9a6 6 0 0112 0v1h1a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7a2 2 0 012-2h1V9z"
-                        stroke="#34d399"
-                        strokeWidth="1.8"
-                        strokeLinejoin="round"
-                      />
-                      <circle cx="9" cy="8" r="1" fill="#34d399" />
-                      <circle cx="15" cy="8" r="1" fill="#34d399" />
-                    </svg>
-                    <span className={styles.apkBadgeText}>APK</span>
-                  </div>
+              <div className={styles.selectionActions}>
+                <button
+                  type="button"
+                  className={styles.changeFileButton}
+                  onClick={handleOpenFileDialog}
+                >
+                  Choose another file
+                </button>
+              </div>
+            </div>
+          )}
 
-                  <div className={styles.fileDetails}>
-                    <p className={styles.fileName} title={selectedFile.name}>
-                      {selectedFile.name}
-                    </p>
-                    <p className={styles.fileSize}>{formatBytes(selectedFile.size)}</p>
-                  </div>
-
-                  <button
-                    type="button"
-                    className={styles.removeButton}
-                    onClick={handleRemoveFile}
-                    aria-label={`Remove file ${selectedFile.name}`}
-                    title="Remove file"
-                  >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M18 6L6 18M6 6l12 12"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    <span>Remove</span>
-                  </button>
-                </div>
-
-                <div className={styles.selectionActions}>
-                  <button
-                    type="button"
-                    className={styles.changeFileButton}
-                    onClick={handleOpenFileDialog}
-                  >
-                    Choose another file
-                  </button>
+          {/* Visual State: ANALYZING (Processing State) */}
+          {state === 'analyzing' && selectedFile && (
+            <div className={styles.stageContent} role="status" aria-live="polite">
+              <div className={styles.mascotStageArea}>
+                <svg className={styles.activityRing} viewBox="0 0 150 150" aria-hidden="true">
+                  <circle
+                    cx="75"
+                    cy="75"
+                    r="68"
+                    fill="none"
+                    stroke="rgba(255, 255, 255, 0.08)"
+                    strokeWidth="2.5"
+                  />
+                  <circle
+                    cx="75"
+                    cy="75"
+                    r="68"
+                    fill="none"
+                    stroke={activeIndicator === 'good' ? '#34d399' : '#f87171'}
+                    strokeWidth="2.5"
+                    strokeDasharray="95 335"
+                    strokeLinecap="round"
+                    className={styles.rotatingArc}
+                  />
+                </svg>
+                <div className={styles.mascotPulseWrapper}>
+                  <img
+                    src={goodIndicator}
+                    alt="Benign indicator"
+                    className={`${styles.mascotImg} ${
+                      activeIndicator === 'good' ? styles.mascotVisible : styles.mascotHidden
+                    } ${styles.indicatorGoodGlow}`}
+                  />
+                  <img
+                    src={badIndicator}
+                    alt="Threat indicator"
+                    className={`${styles.mascotImg} ${
+                      activeIndicator === 'bad' ? styles.mascotVisible : styles.mascotHidden
+                    } ${styles.indicatorBadGlow}`}
+                  />
                 </div>
               </div>
-            )}
+              <h2 className={styles.stageTitle}>Analyzing APK…</h2>
+              <p className={styles.stageFileName}>{selectedFile.name}</p>
+              <div className={styles.timerBadge} aria-label={`Elapsed processing time: ${formatElapsedTime(elapsedTime)}`}>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className={styles.timerIcon}
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                <span>{formatElapsedTime(elapsedTime)}</span>
+              </div>
+            </div>
+          )}
 
-            {/* Visual State: ANALYZING (In Progress) */}
-            {state === 'analyzing' && selectedFile && (
-              <div className={styles.analyzingContent} role="status" aria-live="polite">
-                <div className={styles.indicatorContainer}>
+          {/* Visual State: RESULT (When result arrives) */}
+          {state === 'ready_for_backend' && selectedFile && result && (
+            <div className={styles.stageContent} role="status" aria-live="polite">
+              <div className={styles.mascotStageArea}>
+                <div className={styles.resultMascotWrapper}>
                   <img
-                    src={activeIndicator === 'good' ? goodIndicator : badIndicator}
-                    alt={activeIndicator === 'good' ? 'Safe indicator' : 'Threat indicator'}
-                    className={`${styles.indicatorImage} ${
-                      activeIndicator === 'good' ? styles.indicatorGood : styles.indicatorBad
+                    src={isMalicious ? badIndicator : goodIndicator}
+                    alt={isMalicious ? 'Malicious APK mascot' : 'Benign APK mascot'}
+                    className={`${styles.resultMascot} ${
+                      isMalicious ? styles.indicatorBadGlow : styles.indicatorGoodGlow
                     }`}
                   />
                 </div>
-                <h2 className={styles.analyzingHeading}>Analyzing Android Package</h2>
-                <p className={styles.analyzingFile}>{selectedFile.name}</p>
-                <p className={styles.analyzingStageText}>{analyzingStage}</p>
               </div>
-            )}
-          </section>
-        ) : null}
+              <h2 className={isMalicious ? styles.verdictMalicious : styles.verdictBenign}>
+                {isMalicious ? 'Malicious APK' : 'Benign APK'}
+              </h2>
+              <p className={styles.resultFileName}>{selectedFile.name}</p>
+              <p className={styles.resultExplanation}>
+                {isMalicious
+                  ? 'Guardroid flagged this APK as potentially malicious based on its static features.'
+                  : 'Guardroid classified this APK as benign based on its static features.'}
+              </p>
+              <button
+                type="button"
+                className={styles.scanAgainButton}
+                onClick={handleRemoveFile}
+              >
+                Scan another APK
+              </button>
+            </div>
+          )}
+        </section>
 
         {/* Primary CTA: Analyze APK (Shown when file is selected) */}
         {state === 'selected' && (
@@ -429,98 +549,6 @@ const AnalysisPage: FC = () => {
               </svg>
             </button>
           </div>
-        )}
-
-        {/* Visual State: READY FOR BACKEND (Results Panel) */}
-        {state === 'ready_for_backend' && selectedFile && (
-          <section className={styles.integrationPanel} aria-labelledby="backend-integration-heading">
-            <div className={styles.integrationHeader}>
-              <div className={styles.statusPill}>
-                <span className={styles.statusDot} />
-                {result ? 'Analysis Complete' : 'Client Validation Ready'}
-              </div>
-              <h2 id="backend-integration-heading" className={styles.integrationTitle}>
-                {result ? 'Prediction Verdict' : 'Analysis API Integration Point'}
-              </h2>
-            </div>
-
-            <div className={styles.packageSummary}>
-              <div className={styles.summaryItem}>
-                <span className={styles.summaryLabel}>Package Name</span>
-                <span className={styles.summaryValue}>{selectedFile.name}</span>
-              </div>
-              <div className={styles.summaryItem}>
-                <span className={styles.summaryLabel}>File Size</span>
-                <span className={styles.summaryValue}>{formatBytes(selectedFile.size)}</span>
-              </div>
-              <div className={styles.summaryItem}>
-                <span className={styles.summaryLabel}>
-                  {result ? 'Verdict' : 'Client Status'}
-                </span>
-                <span className={result ? (result.predicted_label === 0 || result.predicted_label === '0' || String(result.predicted_label).toLowerCase() === 'malicious' ? styles.summaryValueRed : styles.summaryValueGreen) : styles.summaryValueGreen}>
-                  {result ? (result.predicted_label === 0 || result.predicted_label === '0' || String(result.predicted_label).toLowerCase() === 'malicious' ? 'Malicious' : 'Benign') : 'Archive Validated (.apk)'}
-                </span>
-              </div>
-              {result?.class_probabilities && Object.keys(result.class_probabilities).length > 0 && (
-                <div className={styles.summaryItem}>
-                  <span className={styles.summaryLabel}>Confidence</span>
-                  <span className={styles.summaryValue}>
-                    {Object.entries(result.class_probabilities)
-                      .map(([cls, prob]) => `${cls === '0' ? 'Malicious' : cls === '1' ? 'Benign' : cls}: ${(prob * 100).toFixed(1)}%`)
-                      .join(' | ')}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className={styles.noticeBox}>
-              <div className={styles.noticeIconWrap}>
-                {result ? (
-                  <img
-                    src={result.predicted_label === 0 || result.predicted_label === '0' || String(result.predicted_label).toLowerCase() === 'malicious' ? badIndicator : goodIndicator}
-                    alt={result.predicted_label === 0 || result.predicted_label === '0' || String(result.predicted_label).toLowerCase() === 'malicious' ? 'Malicious verdict' : 'Benign verdict'}
-                    style={{ width: '32px', height: '32px', objectFit: 'contain' }}
-                  />
-                ) : (
-                  <svg
-                    width="22"
-                    height="22"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    aria-hidden="true"
-                  >
-                    <circle cx="12" cy="12" r="10" stroke="#34d399" strokeWidth="2" />
-                    <path
-                      d="M12 16v-4m0-4h.01"
-                      stroke="#34d399"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                )}
-              </div>
-              <div className={styles.noticeText}>
-                <p className={styles.noticeTitle}>
-                  {result ? 'Model Inference Result' : 'Backend ML pipeline status'}
-                </p>
-                <p className={styles.noticeDescription}>
-                  {result
-                    ? `Guardroid model classified "${selectedFile.name}" with predicted label: ${result.predicted_label}.`
-                    : 'Dispatched to FastAPI backend for threat analysis.'}
-                </p>
-              </div>
-            </div>
-
-            <div className={styles.integrationActions}>
-              <button
-                type="button"
-                className={styles.resetButton}
-                onClick={handleRemoveFile}
-              >
-                Analyze another APK
-              </button>
-            </div>
-          </section>
         )}
       </div>
     </main>

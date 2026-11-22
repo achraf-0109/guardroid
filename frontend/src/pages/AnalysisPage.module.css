@@ -85,13 +85,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 290px;
+  min-height: 420px;
   padding: clamp(2rem, 4vw, 3rem);
   border-radius: 20px;
   background: rgba(18, 24, 38, 0.45);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: background-color 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
   box-sizing: border-box;
 }
 
@@ -138,10 +138,30 @@
   outline-offset: 4px;
 }
 
-/* Analyzing State */
-.dropzoneAnalyzing {
-  border: 1px solid rgba(52, 211, 153, 0.35);
-  background: rgba(18, 24, 38, 0.8);
+/* Analyzing (Processing) States with subtle tints in sync with mascot */
+.dropzoneAnalyzingGood {
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  background: rgba(52, 211, 153, 0.06);
+  box-shadow: 0 0 35px rgba(52, 211, 153, 0.12);
+}
+
+.dropzoneAnalyzingBad {
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: rgba(248, 113, 113, 0.06);
+  box-shadow: 0 0 35px rgba(248, 113, 113, 0.12);
+}
+
+/* Result States (Settled into verdict color) */
+.dropzoneResultBenign {
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  background: rgba(52, 211, 153, 0.06);
+  box-shadow: 0 16px 40px -10px rgba(52, 211, 153, 0.2);
+}
+
+.dropzoneResultMalicious {
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: rgba(248, 113, 113, 0.06);
+  box-shadow: 0 16px 40px -10px rgba(248, 113, 113, 0.2);
 }
 
 /* ── Content: Idle & Dragging ───────────────────────────────────────────── */
@@ -396,116 +416,208 @@
   border-radius: 2px;
 }
 
-/* ── Content: Analyzing Progress ────────────────────────────────────────── */
-.analyzingContent {
+/* ── Content: Analyzing Progress & Result Views ────────────────────────── */
+.stageContent {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 1.5rem 0;
-}
-
-.indicatorContainer {
-  position: relative;
-  width: 72px;
-  height: 72px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1.5rem;
-}
-
-.indicatorImage {
   width: 100%;
-  height: 100%;
-  object-fit: contain;
-  transition: transform 0.25s ease, filter 0.25s ease;
-  animation: pulseIndicator 1.2s ease-in-out infinite;
+  max-width: 580px;
+  padding: 1rem 0;
 }
 
-.indicatorGood {
-  filter: drop-shadow(0 0 16px rgba(52, 211, 153, 0.5));
-}
-
-.indicatorBad {
-  filter: drop-shadow(0 0 16px rgba(239, 68, 68, 0.5));
-}
-
-@keyframes pulseIndicator {
-  0%, 100% {
-    transform: scale(0.95);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-.pulseSpinner {
+.mascotStageArea {
   position: relative;
-  width: 64px;
-  height: 64px;
+  width: 150px;
+  height: 150px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 1.5rem;
 }
 
-.spinnerRing {
+.activityRing {
   position: absolute;
   inset: 0;
-  border: 3px solid rgba(52, 211, 153, 0.18);
-  border-top-color: #34d399;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+  width: 150px;
+  height: 150px;
+  pointer-events: none;
+  animation: spinRing 1.4s linear infinite;
 }
 
-.spinnerCore {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #34d399;
-  box-shadow: 0 0 16px #34d399;
-  animation: pulseCore 1.6s ease-in-out infinite;
+.rotatingArc {
+  transition: stroke 0.5s ease;
 }
 
-@keyframes spin {
+@keyframes spinRing {
+  from {
+    transform: rotate(0deg);
+  }
   to {
     transform: rotate(360deg);
   }
 }
 
-@keyframes pulseCore {
-  0%, 100% {
-    transform: scale(0.85);
-    opacity: 0.6;
-  }
-  50% {
-    transform: scale(1.15);
-    opacity: 1;
-  }
-}
-
-.analyzingHeading {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #f1f5f9;
-  margin: 0 0 0.4rem;
-}
-
-.analyzingFile {
-  font-size: 0.9rem;
-  color: #64748b;
-  margin: 0 0 1rem;
-}
-
-.analyzingStageText {
-  font-size: 0.92rem;
-  font-weight: 500;
-  color: #34d399;
-  margin: 0;
+.mascotPulseWrapper {
+  position: relative;
+  width: 110px;
+  height: 110px;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
+  animation: gentleMascotScale 2.4s ease-in-out infinite;
+}
+
+@keyframes gentleMascotScale {
+  0%, 100% {
+    transform: scale(0.96);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+.mascotImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: opacity 0.45s ease-in-out;
+  pointer-events: none;
+}
+
+.mascotVisible {
+  opacity: 1;
+}
+
+.mascotHidden {
+  opacity: 0;
+}
+
+.indicatorGoodGlow {
+  filter: drop-shadow(0 0 20px rgba(52, 211, 153, 0.45));
+}
+
+.indicatorBadGlow {
+  filter: drop-shadow(0 0 20px rgba(248, 113, 113, 0.45));
+}
+
+.resultMascotWrapper {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resultMascot {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.stageTitle {
+  font-size: clamp(1.4rem, 2.8vw, 1.85rem);
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0 0 0.5rem;
+}
+
+.stageFileName {
+  font-size: 0.95rem;
+  color: #94a3b8;
+  margin: 0;
+  word-break: break-all;
+}
+
+.timerBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: 'JetBrains Mono', Consolas, Monaco, monospace;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  padding: 0.35rem 0.85rem;
+  margin-top: 0.9rem;
+  letter-spacing: 0.02em;
+}
+
+.timerIcon {
+  color: #34d399;
+  flex-shrink: 0;
+}
+
+.verdictBenign {
+  font-size: clamp(2rem, 4vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #34d399;
+  margin: 0 0 0.5rem;
+  line-height: 1.15;
+}
+
+.verdictMalicious {
+  font-size: clamp(2rem, 4vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #f87171;
+  margin: 0 0 0.5rem;
+  line-height: 1.15;
+}
+
+.resultFileName {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #94a3b8;
+  margin: 0 0 0.75rem;
+  word-break: break-all;
+}
+
+.resultExplanation {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #cbd5e1;
+  max-width: 52ch;
+  margin: 0 auto 2rem;
+}
+
+.scanAgainButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 2.2rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.scanAgainButton:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.scanAgainButton:active {
+  transform: translateY(0);
+}
+
+.scanAgainButton:focus-visible {
+  outline: 2px solid #34d399;
+  outline-offset: 3px;
 }
 
 /* ── Primary Analyze Button ─────────────────────────────────────────────── */
@@ -761,14 +873,26 @@
   .analyzeButton,
   .analyzeButton:hover,
   .retryButton:hover,
-  .resetButton:hover {
+  .resetButton:hover,
+  .scanAgainButton,
+  .scanAgainButton:hover {
     transition: none !important;
     transform: none !important;
   }
 
-  .spinnerRing,
-  .spinnerCore {
+  .activityRing,
+  .rotatingArc {
     animation: none !important;
+    display: none !important;
+  }
+
+  .mascotPulseWrapper {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .mascotImg {
+    transition: none !important;
   }
 }
 
