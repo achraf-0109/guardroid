@@ -8,6 +8,7 @@ from routes.routes import router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.model = joblib.load(MODEL_PATH)
+    app.state.features = joblib.load(MODEL_PATH).feature_names_in_.tolist()
     yield
 
 my_app = FastAPI(
@@ -18,10 +19,9 @@ my_app = FastAPI(
 
 my_app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["http://localhost:5173"],
+    allow_methods=["POST"],
+    allow_headers=["Content-Type"],
 )
 
 my_app.include_router(router)

@@ -4,7 +4,6 @@ from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from config import ALLOWED_EXTENSIONS, MAX_UPLOAD_SIZE
 from services.predictor import predict_apk
 from services.processor import process_features
-from demo.demo import generate_raw_vector
 
 router = APIRouter()
 
@@ -44,7 +43,6 @@ def predict(request: Request, file: UploadFile = File(...)):
                     status_code=400,
                     detail="The uploaded file is empty.",
                 )
-            request.app.state.features = request.app.state.model.feature_names_in_.tolist()
             return predict_apk(
                 apk_path=apk_path,
                 model=request.app.state.model,
